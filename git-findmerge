@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Source: https://stackoverflow.com/a/30998048
+# Licence: https://creativecommons.org/licenses/by-sa/3.0/
+
+COMMIT=$1
+BRANCH=${2:-HEAD}
+(git rev-list $COMMIT..$BRANCH --ancestry-path | cat -n; git rev-list $COMMIT..$BRANCH --first-parent | cat -n) | sort -k2 -s | uniq -f1 -d | sort -n | tail -1 | cut -f2

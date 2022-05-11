@@ -1,0 +1,2 @@
+#!/bin/bash
+GIT_SEQUENCE_EDITOR="sed -e '1s/^pick /edit /' -i" git rebase -i "$1^"
