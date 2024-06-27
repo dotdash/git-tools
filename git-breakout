@@ -1,0 +1,33 @@
+#!/bin/bash
+
+set -e
+
+if [ $# -lt 2 ]; then
+  cat <<-EOT
+	Usage: git breakout <branch_name> <commit>...
+
+	    This command (ab)uses rebase to create a PR that contains
+	    some commits taken from the current branch (or anywhere
+	    else, really) and applied on top of origin/HEAD.
+
+	    The PR is created from a new branch <branch_name> which is
+	    only created in the origin remote repo.
+
+	    <commit> may be given as either individual commits or commit ranges.
+
+	    There are no sanity checks, use at your own risk!
+
+	    Good luck!
+	EOT
+  exit 1
+fi
+
+BRANCH=$1
+shift
+
+GIT_SEQUENCE_EDITOR="(echo x git checkout origin/HEAD;
+git rev-list --reverse --no-walk "$@" | xargs -I{} echo pick {};
+echo x git push origin HEAD:refs/heads/${BRANCH};
+echo x gh pr create -w --head ${BRANCH}
+echo x git checkout $(git rev-parse HEAD)
+) >" git rebase --keep-base --autostash --interactive
