@@ -1,0 +1,74 @@
+#!/bin/bash
+
+set -Eeuo pipefail
+
+if [ $# -lt 1 ]; then
+  cat <<-EOT
+	Usage: git quickfix <commit>
+
+	    This command tries to do a quick commit fixup, for which you would usually
+	    use an interactive rebase with fixup commits. This command tries to do the
+	    same, adding the currently staged changes to the given commit, but without
+	    touching your working tree, thus possibly being a lot faster.
+
+	    The drawback is, that this tool cannot handle any conflicts and will simply
+	    fail if any are encountered.
+
+	    Make sure that there are no merge commits in the range <commit>..HEAD, it
+	    they would probably get messed up badly.
+
+	    Good luck!
+	EOT
+  exit 1
+fi
+
+COMMIT=$(git rev-parse "$1")
+shift
+
+redo_commit () {
+  COMMIT=$1
+  PREV=$2
+
+  TREE=$(git write-tree)
+
+  echo $(git show -s --format='%B' $COMMIT | env \
+    GIT_AUTHOR_NAME="$(git show -s --format='%an' $COMMIT)" \
+    GIT_AUTHOR_EMAIL="$(git show -s --format='%ae' $COMMIT)" \
+    GIT_AUTHOR_DATE="$(git show -s --format='%ad' $COMMIT)" \
+    git commit-tree -p $PREV $TREE)
+}
+
+# Write a tree with the staged changes before switching the index file...
+FIXED_TREE=$(git write-tree)
+
+GIT_INDEX_FILE=$(git rev-parse --git-dir)/quickfix-index
+export GIT_INDEX_FILE
+trap "rm $GIT_INDEX_FILE" EXIT
+
+PREV=$(git rev-parse $COMMIT^)
+git read-tree $COMMIT
+
+# Try to fixup the commit...
+git show -s --format='Fixing %t %s' $COMMIT
+if ! git diff-tree -p HEAD $FIXED_TREE | git apply --cached; then
+  echo Could not apply changes....
+  echo Aborting...
+  exit 1
+fi
+PREV="$(redo_commit $COMMIT $PREV)"
+
+# Replay the remaining commits
+for COMMIT in $(git rev-list --reverse "$COMMIT.."); do
+  git show -s --format='Applying %t %s' $COMMIT
+  if ! git diff-tree -p $COMMIT | git apply --cached; then
+    echo Could not apply changes....
+    echo Aborting...
+    exit 1
+  fi
+
+  PREV="$(redo_commit $COMMIT $PREV)"
+done
+
+git update-ref HEAD $PREV
+
+exit 0
