@@ -36,7 +36,7 @@ GIT_INDEX_FILE=$(git rev-parse --git-dir)/breakout-index
 export GIT_INDEX_FILE
 trap "rm $GIT_INDEX_FILE" EXIT
 
-PREV=$(git rev-parse @{u})
+PREV=$(git rev-parse origin/HEAD)
 git read-tree $PREV
 
 for COMMIT in $(git rev-list --reverse --no-walk "$@"); do
