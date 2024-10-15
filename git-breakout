@@ -56,4 +56,11 @@ for COMMIT in $(git rev-list --reverse --no-walk "$@"); do
 done
 
 git push origin $PREV:refs/heads/${BRANCH};
-gh pr create -w --head ${BRANCH}
+
+if command -v gh &>/dev/null; then
+  gh pr create -w --head ${BRANCH}
+else
+  echo GitHub CLI not installed, please manually open the web interface to create the PR
+fi
+
+exit 0
