@@ -32,6 +32,11 @@ fi
 BRANCH=$1
 shift
 
+SIGN_FLAG=
+if [[ $(git config --get --type bool commit.gpgSign) == true ]]; then
+  SIGN_FLAG=-S
+fi
+
 GIT_INDEX_FILE=$(git rev-parse --git-dir)/breakout-index
 export GIT_INDEX_FILE
 trap "rm $GIT_INDEX_FILE" EXIT
@@ -52,7 +57,7 @@ for COMMIT in $(git rev-list --reverse --no-walk "$@"); do
     GIT_AUTHOR_NAME="$(git show -s --format='%an' $COMMIT)" \
     GIT_AUTHOR_EMAIL="$(git show -s --format='%ae' $COMMIT)" \
     GIT_AUTHOR_DATE="$(git show -s --format='%ad' $COMMIT)" \
-    git commit-tree -p $PREV $TREE)
+    git commit-tree $SIGN_FLAG -p $PREV $TREE)
 done
 
 git push origin $PREV:refs/heads/${BRANCH};
